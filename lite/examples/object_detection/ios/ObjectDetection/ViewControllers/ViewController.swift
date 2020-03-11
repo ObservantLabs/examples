@@ -15,6 +15,8 @@
 import UIKit
 
 class ViewController: UIViewController {
+    
+    private let debugView = DebugView()
 
   // MARK: Storyboards Connections
   @IBOutlet weak var previewView: PreviewView!
@@ -55,10 +57,29 @@ class ViewController: UIViewController {
     guard modelDataHandler != nil else {
       fatalError("Failed to load model")
     }
+    
+    modelDataHandler?.scaledImagePreviewHandler = { [weak self] image in
+        guard let strongSelf = self else { return }
+        strongSelf.debugView.setImage(image)
+    }
+    
     cameraFeedManager.delegate = self
     overlayView.clearsContextBeforeDrawing = true
 
     addPanGesture()
+    
+    debugView.translatesAutoresizingMaskIntoConstraints = false
+    view.addSubview(debugView)
+    
+    let constraints =
+    [
+    debugView.topAnchor.constraint(equalTo: view.safeAreaLayoutGuide.topAnchor, constant: 44),
+    debugView.trailingAnchor.constraint(equalTo: view.safeAreaLayoutGuide.trailingAnchor, constant: -44),
+    debugView.widthAnchor.constraint(equalToConstant: 200),
+    debugView.heightAnchor.constraint(equalTo: debugView.widthAnchor)
+    ]
+    
+    NSLayoutConstraint.activate(constraints)
   }
 
   override func didReceiveMemoryWarning() {

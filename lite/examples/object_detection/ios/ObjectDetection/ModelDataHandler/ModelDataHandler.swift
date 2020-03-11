@@ -44,6 +44,10 @@ enum MobileNetSSD {
 /// by invoking the `Interpreter`. It then formats the inferences obtained and returns the top N
 /// results for a successful inference.
 class ModelDataHandler: NSObject {
+    
+    typealias ScaledImagePreviewHandler = (UIImage) -> ()
+    var scaledImagePreviewHandler: ScaledImagePreviewHandler?
+    lazy var ciContext: CIContext = { return CIContext(options: nil) }()
 
   // MARK: - Internal Properties
   /// The current thread count used by the TensorFlow Lite Interpreter.
@@ -135,6 +139,16 @@ class ModelDataHandler: NSObject {
     let scaledSize = CGSize(width: inputWidth, height: inputHeight)
     guard let scaledPixelBuffer = pixelBuffer.resized(to: scaledSize) else {
       return nil
+    }
+    
+    DispatchQueue.global().async { [weak self] in
+        guard let strongSelf = self else { return }
+        guard let scaledImagePreviewHandler = strongSelf.scaledImagePreviewHandler else { return }
+        guard let image = scaledPixelBuffer.ft_imageWithContext(strongSelf.ciContext) else { return }
+        
+        DispatchQueue.main.async {
+            scaledImagePreviewHandler(image)
+        }
     }
 
     let interval: TimeInterval
@@ -376,4 +390,17 @@ extension Array {
     }
     #endif  // swift(>=5.0)
   }
+}
+
+
+
+extension CVPixelBuffer {
+    func ft_imageWithContext(_ ciContext: CIContext) -> UIImage? {
+        let ciImage = CIImage(cvPixelBuffer: self)
+        guard let cgImage = ciContext.createCGImage(ciImage, from: CGRect(x: 0, y: 0, width: CVPixelBufferGetWidth(self), height: CVPixelBufferGetHeight(self))) else {
+            assertionFailure("Unable to convert CIImage to CGImage")
+            return nil
+        }
+        return UIImage(cgImage: cgImage)
+    }
 }
